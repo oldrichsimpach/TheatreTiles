@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+.dotnet-home/
+dist/
+.vs/
+.idea/
+*.user
+*.suo
+*.divz
+*.mp3
+*.wav
+*.wma
+*.aif
+*.aiff
+*.m4a
+*.aac
+*.flac
