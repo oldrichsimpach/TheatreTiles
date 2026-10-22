@@ -78,3 +78,7 @@ Podrobný návod najdete v [dokumentaci aplikace](DivadelniZvuky/README.md).
 - `.gitignore` — vynechává výstupy sestavení, lokální nastavení a uživatelské zvuky/projekty.
 
 Repozitář slouží jako veřejná záloha zdrojového kódu a dokumentace. Neobsahuje zvuky konkrétních představení ani osobní projekty.
+
+## Licence
+
+TheatreTiles je dostupný pod [MIT licencí](LICENSE). Copyright (c) 2026 oldrichsimpach.

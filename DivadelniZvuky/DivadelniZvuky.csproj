@@ -8,6 +8,7 @@
     <Version>0.2.1</Version>
     <AssemblyName>TheatreTiles</AssemblyName>
     <Product>TheatreTiles</Product>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <ApplicationIcon>Assets\TheatreTiles.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup><Resource Include="Assets\TheatreTiles.ico" /></ItemGroup>
