@@ -4,7 +4,13 @@
 
 **Jednoduchá aplikace pro zvukaře v divadle.** TheatreTiles pomáhá připravit zvukové pokyny pro představení a spouštět je přes velké, přehledně popsané dlaždice. Cílem je rychlé ovládání a minimum rušivých prvků.
 
-Aktuální verze: **0.2.1** · Platforma: **Windows** · Technologie: **C# / .NET 10 / WPF**.
+Aktuální verze: **0.2.2** · Platforma: **Windows** · Technologie: **C# / .NET 10 / WPF**.
+
+## Stáhnout a spustit
+
+Přenosný balíček se jmenuje **TheatreTiles-0.2.2-win-x64.zip**. Po sestavení je ve složce `dist/`; pro veřejné stažení musí být přiložený k vydání v [Releases](https://github.com/oldrichsimpach/TheatreTiles/releases). Rozbalte celý ZIP a spusťte **TheatreTiles.exe** se zelenou ikonou T. Obsahuje vlastní .NET, takže není nutné instalovat SDK ani .NET Desktop Runtime. Balíček je pro 64bitové Windows x64.
+
+**Code → Download ZIP** a soubory **Source code** obsahují zdrojové kódy pro vývojáře; spouštěcí program v nich není. Pokud Windows skrývá přípony, hledejte soubor TheatreTiles typu „Aplikace“. Zástupce na ploše lze vytvořit přes pravé tlačítko → Odeslat → Plocha.
 
 ## Co aplikace umí
 
@@ -49,13 +55,13 @@ dotnet build DivadelniZvuky/DivadelniZvuky.csproj -c Release
 dotnet run --project DivadelniZvuky/DivadelniZvuky.csproj -c Release
 ```
 
-Vytvoření spustitelné složky:
+Vytvoření přenosného ZIPu s vlastním runtime:
 
 ```powershell
-dotnet publish DivadelniZvuky/DivadelniZvuky.csproj -c Release --self-contained false -o dist/TheatreTiles
+./DivadelniZvuky/Publish-Portable.ps1
 ```
 
-Takto sestavená aplikace vyžaduje na cílovém počítači .NET Desktop Runtime 10. Při přenosu zachovejte celou publikovanou složku.
+Skript použije profil Portable, přibalí .NET i nativní knihovny WPF a vytvoří ZIP v dist/. Pro stažení runtime balíčků při sestavení potřebuje přístup k NuGet.org. Existující balíček nepřepisuje. Běžné vývojové sestavení přes `dotnet build` nadále vyžaduje nainstalovaný .NET Desktop Runtime 10.
 
 ## Stav projektu a ověření
 

@@ -1,6 +1,6 @@
-# TheatreTiles 0.2.1
+# TheatreTiles 0.2.2
 
-Offline zvukové pokyny pro Windows. Spusťte TheatreTiles.exe ze složky se všemi přiloženými soubory. Vyžaduje .NET Desktop Runtime 10 (součást nainstalovaného SDK).
+Offline zvukové pokyny pro Windows. Hotový balíček `TheatreTiles-0.2.2-win-x64.zip` rozbalte a spusťte `TheatreTiles.exe` se zelenou ikonou T. Tento přenosný balíček obsahuje vlastní .NET a nepotřebuje instalaci SDK ani .NET Desktop Runtime. Je určený pro 64bitové Windows x64. ZIP zdrojových kódů z GitHubu spouštěcí soubor neobsahuje.
 
 ## Dlaždice a zvuk
 

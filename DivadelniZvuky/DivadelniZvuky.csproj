@@ -5,7 +5,7 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <AssemblyName>TheatreTiles</AssemblyName>
     <Product>TheatreTiles</Product>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
