@@ -4,11 +4,11 @@
 
 **Jednoduchá aplikace pro zvukaře v divadle.** TheatreTiles pomáhá připravit zvukové pokyny pro představení a spouštět je přes velké, přehledně popsané dlaždice. Cílem je rychlé ovládání a minimum rušivých prvků.
 
-Aktuální verze: **0.2.2** · Platforma: **Windows** · Technologie: **C# / .NET 10 / WPF**.
+Aktuální verze je **0.2.3** · **Windows** · **C# / .NET 10 / WPF**. [Přehled změn](CHANGELOG.md)
 
 ## Stáhnout a spustit
 
-Přenosný balíček se jmenuje **TheatreTiles-0.2.2-win-x64.zip**. Po sestavení je ve složce `dist/`; pro veřejné stažení musí být přiložený k vydání v [Releases](https://github.com/oldrichsimpach/TheatreTiles/releases). Rozbalte celý ZIP a spusťte **TheatreTiles.exe** se zelenou ikonou T. Obsahuje vlastní .NET, takže není nutné instalovat SDK ani .NET Desktop Runtime. Balíček je pro 64bitové Windows x64.
+Rozbalte celý ZIP a spusťte **TheatreTiles.exe** se zelenou ikonou T. Balíček je pro Windows x64 a obsahuje vlastní .NET. [Stáhnout TheatreTiles 0.2.3](https://github.com/oldrichsimpach/TheatreTiles/releases/download/v0.2.3/TheatreTiles-0.2.3-win-x64.zip)
 
 **Code → Download ZIP** a soubory **Source code** obsahují zdrojové kódy pro vývojáře; spouštěcí program v nich není. Pokud Windows skrývá přípony, hledejte soubor TheatreTiles typu „Aplikace“. Zástupce na ploše lze vytvořit přes pravé tlačítko → Odeslat → Plocha.
 
@@ -16,7 +16,8 @@ Přenosný balíček se jmenuje **TheatreTiles-0.2.2-win-x64.zip**. Po sestaven�
 
 - **Zvukové dlaždice:** vlastní popisek, import zvuku a přehrání od začátku jedním kliknutím. Zelená označuje nepoužitý pokyn, červená již použitý. Hraje vždy jeden zvuk.
 - **Pojmenované sekce:** organizace například podle dějství, přesouvání, změna velikosti, duplikování včetně zvuků a nastavení i odstranění.
-- **Vodorovné řazení:** dlaždice jsou v jedné řadě s vodorovným posouváním. Poslední dlaždice „+“ přidává další pokyn.
+- V každé sekci lze přepínat mezi přizpůsobením čtvercových dlaždic do dostupného prostoru a vodorovným posouváním. Poslední dlaždice „+“ přidává další pokyn.
+- Poznámka k pokynu se zobrazí při najetí na dlaždici a upravuje se přes **Upravit popisek**.
 - **Ovládání přehrávání:** časová osa se skokem jedním kliknutím, pauza, stop a posun o ±5 sekund.
 - **Hlasitost:** hlavní hlasitost, ztlumení a samostatné nastavení každého zvuku.
 - **Fade-out:** vypnuto nebo plynulé zeslabení posledních 3, 5 či 7 sekund do ticha.

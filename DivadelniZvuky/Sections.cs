@@ -18,6 +18,7 @@ public sealed class ShowSection
  public double Y { get; set; }
  public double Width { get; set; } = 1;
  public double Height { get; set; } = 1;
+ public bool AutoSizeTiles { get; set; }
  public List<Cue> Cues { get; set; } = [];
 }
 
@@ -41,6 +42,7 @@ public sealed partial class SectionSurface : Border
  readonly Canvas overlay = new() { IsHitTestVisible = false, ClipToBounds = true };
  readonly Border ghost = new() { BorderBrush = Brushes.White, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(20), Visibility = Visibility.Collapsed };
  readonly TextBlock name;
+ readonly RowDefinition headingRow = new() { Height = new GridLength(36) };
  readonly System.Windows.Shapes.Path wall = new() { Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(48, 255, 255, 255)), StrokeThickness = 1, IsHitTestVisible = false };
  public static readonly DependencyProperty PressureProperty = DependencyProperty.Register(nameof(Pressure), typeof(double), typeof(SectionSurface), new PropertyMetadata(0.0, (d, _) => ((SectionSurface)d).UpdateWall()));
  public double Pressure { get => (double)GetValue(PressureProperty); set => SetValue(PressureProperty, value); }
@@ -74,7 +76,7 @@ public sealed partial class SectionSurface : Border
   CornerRadius = new CornerRadius(20); BorderThickness = new Thickness(0);
   Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(10, 255, 255, 255));
   var grid = new Grid(); Child = grid;
-  grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) }); grid.RowDefinitions.Add(new RowDefinition());
+  grid.RowDefinitions.Add(headingRow); grid.RowDefinitions.Add(new RowDefinition());
   name = new TextBlock { Text = model.Name, Foreground = Brushes.Gray, Opacity = .3, FontSize = 17, Margin = new Thickness(16, 8, 50, 0), TextTrimming = TextTrimming.CharacterEllipsis, IsHitTestVisible = false };
   grid.Children.Add(name);
   var mover = new Thumb { Width = 52, Height = 28, HorizontalAlignment = HorizontalAlignment.Center, Cursor = Cursors.SizeAll, ToolTip = "Přesunout sekci" };
@@ -86,7 +88,11 @@ public sealed partial class SectionSurface : Border
   mover.DragDelta += (_, _) => { Point current = owner.WorkspacePointer(); Vector delta = current - movePointer; movePointer = current; owner.TransformSection(model, delta.X, delta.Y, false); };
   Scroll = new ScrollViewer { Content = tiles, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Padding = new Thickness(14, 8, 14, 12) };
   Grid.SetRow(Scroll, 1); grid.Children.Add(Scroll);
-  Scroll.PreviewMouseWheel += (_, e) => { Scroll.ScrollToHorizontalOffset(Scroll.HorizontalOffset - e.Delta); e.Handled = true; };
+  Scroll.PreviewMouseWheel += (_, e) =>
+  {
+   if (Model.AutoSizeTiles) return;
+   Scroll.ScrollToHorizontalOffset(Scroll.HorizontalOffset - e.Delta); e.Handled = true;
+  };
   overlay.Children.Add(ghost); Grid.SetRowSpan(overlay, 2); grid.Children.Add(overlay);
   Grid.SetRowSpan(wall, 2); grid.Children.Add(wall);
   foreach (var corner in new[] { (-1, -1), (1, -1), (-1, 1), (1, 1) })
@@ -115,28 +121,53 @@ public sealed partial class SectionSurface : Border
  }
  public void Rebuild()
  {
-  if (rebuilding || ActualHeight < 40 || ActualWidth < 1) return;
+  if (rebuilding || ActualHeight <= 0 || ActualWidth <= 0) return;
   rebuilding = true;
   try
   {
    name.Text = Model.Name;
-   double usableHeight = Math.Max(80, ActualHeight - 76);
-   tileSize = Math.Min(220, usableHeight);
-   const int rows = 1;
-   var order = Preview();
-   int cols = order.Count + 1;
-   double totalWidth = cols * (tileSize + 14) - 14;
+   Scroll.HorizontalScrollBarVisibility = Model.AutoSizeTiles ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+   if (Model.AutoSizeTiles) Scroll.ScrollToHorizontalOffset(0);
+   double paddingScale = Model.AutoSizeTiles ? Math.Min(1, Math.Min(ActualWidth / 60, ActualHeight / 100)) : 1;
+   double headerHeight = Model.AutoSizeTiles ? Math.Min(36, ActualHeight * .45) : 36;
+   headingRow.Height = new GridLength(headerHeight);
+   Scroll.Padding = new Thickness(14 * paddingScale, 8 * paddingScale, 14 * paddingScale, 12 * paddingScale);
+   double usableHeight = Model.AutoSizeTiles ? ActualHeight - headerHeight - 22 * paddingScale : Math.Max(80, ActualHeight - 76);
    double viewport = Math.Max(0, ActualWidth - 30);
+   if (Model.AutoSizeTiles) viewport = ActualWidth - 30 * paddingScale;
+   tileSize = Math.Min(220, usableHeight);
+   var order = Preview();
+   int count = order.Count + 1, cols = count;
+   const double gapRatio = 14.0 / 220;
+   double gap = 14;
+   if (Model.AutoSizeTiles)
+   {
+    // Try each column count to find the largest square that fits every tile, including +.
+    tileSize = 0;
+    for (int columns = count; columns >= 1; columns--)
+    {
+     int rows = (count + columns - 1) / columns;
+     double size = Math.Min(220, Math.Min(
+      viewport / (columns + (columns - 1) * gapRatio),
+      usableHeight / (rows + (rows - 1) * gapRatio)));
+     if (size > tileSize) { tileSize = size; cols = columns; }
+    }
+    gap = tileSize * gapRatio;
+   }
+   int rowCount = (count + cols - 1) / cols;
+   double pitch = tileSize + gap;
+   double totalWidth = cols * pitch - gap;
    double left = Math.Max(0, (viewport - totalWidth) / 2);
-   double top = Math.Max(0, (usableHeight - tileSize) / 2);
+   double top = Math.Max(0, (usableHeight - (rowCount * pitch - gap)) / 2);
    var previous = views.ToDictionary(p => p.Key, p => p.Value.TranslatePoint(new Point(), tiles));
    views.Clear(); slots.Clear(); tiles.Children.Clear();
    tiles.Width = Math.Max(viewport, left + totalWidth); tiles.Height = usableHeight;
-   // Fill rows left-to-right; extra columns extend the section horizontally.
+   if (tileSize <= 0) return;
+   // Both modes keep the same left-to-right order, with + in the next slot.
    for (int i = 0; i < order.Count; i++)
    {
     int col = i % cols, row = i / cols;
-    double x = left + col * (tileSize + 14), y = top + row * (tileSize + 14);
+    double x = left + col * pitch, y = top + row * pitch;
     slots.Add(new Rect(x, y, tileSize, tileSize));
     var cue = order[i];
     Border view = cue == dragging ? new Border { Width = tileSize, Height = tileSize, BorderBrush = Brushes.White, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(20), Child = new TextBlock { Text = "Sem přesunout", Foreground = Brushes.White, Opacity = .6, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } } : owner.CreateTile(cue, this, tileSize);
@@ -152,7 +183,10 @@ public sealed partial class SectionSurface : Border
    }
    var plus = new System.Windows.Shapes.Path { Data = Geometry.Parse("M42,2 L58,2 58,42 98,42 98,58 58,58 58,98 42,98 42,58 2,58 2,42 42,42 Z"), Stretch = Stretch.Uniform, Width = tileSize * .84, Height = tileSize * .84, Fill = new LinearGradientBrush(System.Windows.Media.Color.FromRgb(36, 38, 46), System.Windows.Media.Color.FromRgb(93, 95, 106), 45) };
    var add = new Button { Width = tileSize, Height = tileSize, Content = plus, Padding = new Thickness(0), BorderThickness = new Thickness(0), Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(24, 26, 37)), IsEnabled = !owner.IsLayoutLocked, ToolTip = "Přidat dlaždici" };
-   add.Click += (_, _) => owner.AddCue(Model); Canvas.SetLeft(add, order.Count == 0 ? Math.Max(0, (viewport - tileSize) / 2) : left + order.Count * (tileSize + 14)); Canvas.SetTop(add, top + Math.Max(0, Math.Min(rows, order.Count) - 1) * (tileSize + 14)); tiles.Children.Add(add);
+   add.Click += (_, _) => owner.AddCue(Model);
+   Canvas.SetLeft(add, left + (order.Count % cols) * pitch);
+   Canvas.SetTop(add, top + (order.Count / cols) * pitch);
+   tiles.Children.Add(add);
   }
   finally { rebuilding = false; }
  }
@@ -167,7 +201,12 @@ public sealed partial class SectionSurface : Border
   if (owner.IsLayoutLocked || dragging is null || e.Data.GetData("TheatreCue") as string != dragging.Id) { e.Effects = DragDropEffects.None; return; }
   e.Effects = DragDropEffects.Move; e.Handled = true;
   Point p = e.GetPosition(this); ghost.Width = tileSize; ghost.Height = tileSize; ghost.Visibility = Visibility.Visible; Canvas.SetLeft(ghost, p.X - tileSize / 2); Canvas.SetTop(ghost, p.Y - 20);
-  Point sp = e.GetPosition(Scroll); if (sp.X < 35) Scroll.ScrollToHorizontalOffset(Scroll.HorizontalOffset - 12); else if (sp.X > Scroll.ActualWidth - 35) Scroll.ScrollToHorizontalOffset(Scroll.HorizontalOffset + 12);
+  if (!Model.AutoSizeTiles)
+  {
+   Point sp = e.GetPosition(Scroll);
+   if (sp.X < 35) Scroll.ScrollToHorizontalOffset(Scroll.HorizontalOffset - 12);
+   else if (sp.X > Scroll.ActualWidth - 35) Scroll.ScrollToHorizontalOffset(Scroll.HorizontalOffset + 12);
+  }
   Point q = e.GetPosition(tiles); double best = double.MaxValue; int next = target;
   for (int i = 0; i < slots.Count; i++) { Rect r = slots[i]; double dx = Math.Max(r.Left - q.X, Math.Max(0, q.X - r.Right)), dy = Math.Max(r.Top - q.Y, Math.Max(0, q.Y - r.Bottom)); double d = dx * dx + dy * dy; if (d < best) { best = d; next = i; } }
   if (target != next) PreviewAt(next);
@@ -206,7 +245,7 @@ public partial class MainWindow
   {
    cue.Source = state.Sources.GetValueOrDefault(cue.Id);
    // Undo layout does not rewind playback markers or track settings.
-   if (current.TryGetValue(cue.Id, out var existing)) { cue.Text = existing.Text; cue.Source = existing.Source; cue.AudioEntry = existing.AudioEntry; cue.Used = existing.Used; cue.Volume = existing.Volume; cue.FadeOut = existing.FadeOut; cue.FadeSeconds = existing.FadeSeconds; }
+   if (current.TryGetValue(cue.Id, out var existing)) { cue.Text = existing.Text; cue.Note = existing.Note; cue.Source = existing.Source; cue.AudioEntry = existing.AudioEntry; cue.Used = existing.Used; cue.Volume = existing.Volume; cue.FadeOut = existing.FadeOut; cue.FadeSeconds = existing.FadeSeconds; }
   }
   project.Sections = state.Sections;
   project.LayoutTree = state.Tree;
@@ -326,8 +365,8 @@ public partial class MainWindow
  {
   if (project.LayoutLocked) return;
   RememberLayout();
-  var added = new ShowSection { Name = source is null ? $"Sekce {project.Sections.Count + 1}" : source.Name + " – kopie", Width = source?.Width ?? .45, Height = source?.Height ?? .45 };
-  if (source is not null) added.Cues = source.Cues.Select(c => new Cue { Text = c.Text, Used = c.Used, Volume = c.Volume, FadeOut = c.FadeOut, FadeSeconds = c.FadeSeconds, Source = c.Source }).ToList();
+  var added = new ShowSection { Name = source is null ? $"Sekce {project.Sections.Count + 1}" : source.Name + " – kopie", Width = source?.Width ?? .45, Height = source?.Height ?? .45, AutoSizeTiles = source?.AutoSizeTiles ?? false };
+  if (source is not null) added.Cues = source.Cues.Select(c => new Cue { Text = c.Text, Note = c.Note, Used = c.Used, Volume = c.Volume, FadeOut = c.FadeOut, FadeSeconds = c.FadeSeconds, Source = c.Source }).ToList();
   bool fits = false;
   foreach (double y in new[] { 0.0 }.Concat(project.Sections.Select(s => s.Y + s.Height)).Distinct())
    foreach (double x in new[] { 0.0 }.Concat(project.Sections.Select(s => s.X + s.Width)).Distinct())
@@ -407,6 +446,19 @@ public partial class MainWindow
    if (temporary.Text != before) { RememberLayout(); section.Name = temporary.Text; MarkDirty(); RenderTiles(); }
   };
   menu.Items.Add(rename);
+  var sizing = new MenuItem
+  {
+   Header = $"Autosize / Scroll · {(section.AutoSizeTiles ? "Autosize" : "Scroll")}",
+   IsCheckable = true, IsChecked = section.AutoSizeTiles, IsEnabled = !project.LayoutLocked
+  };
+  sizing.Click += (_, _) =>
+  {
+   if (project.LayoutLocked) return;
+   RememberLayout();
+   section.AutoSizeTiles = !section.AutoSizeTiles;
+   MarkDirty(); RenderTiles();
+  };
+  menu.Items.Add(sizing);
   var duplicate = new MenuItem { Header = "Duplikovat sekci", IsEnabled = !project.LayoutLocked };
   duplicate.Click += (_, _) => AddSection(section); menu.Items.Add(duplicate);
   var remove = new MenuItem { Header = "Odstranit sekci", IsEnabled = !project.LayoutLocked };

@@ -1,20 +1,22 @@
-# TheatreTiles 0.2.2
+# TheatreTiles 0.2.3
 
-Offline zvukové pokyny pro Windows. Hotový balíček `TheatreTiles-0.2.2-win-x64.zip` rozbalte a spusťte `TheatreTiles.exe` se zelenou ikonou T. Tento přenosný balíček obsahuje vlastní .NET a nepotřebuje instalaci SDK ani .NET Desktop Runtime. Je určený pro 64bitové Windows x64. ZIP zdrojových kódů z GitHubu spouštěcí soubor neobsahuje.
+Offline zvukové pokyny pro Windows. Rozbalte `TheatreTiles-0.2.3-win-x64.zip` a spusťte `TheatreTiles.exe` se zelenou ikonou T. Balíček je pro Windows x64 a obsahuje vlastní .NET.
 
 ## Dlaždice a zvuk
 
 - Levé kliknutí na dlaždici spustí zvuk od začátku. Hraje vždy jeden zvuk; další dlaždice ho nahradí. Červená znamená použitý pokyn.
 - Pravé tlačítko: nahrát / změnit zvuk, upravit popisek, označit jako nepřehraný, **Fade → Vypnuto / 3 s / 5 s / 7 s**, hlasitost zvuku a **Odstranit dlaždici**.
+- V nabídce **Upravit popisek** lze změnit název dlaždice i samostatnou poznámku. Poznámka se zobrazí při najetí myší. Prázdná poznámka se zobrazí jako „Poznámka…“.
 - Fade běží na konci stopy od 100 % její nastavené hlasitosti k nule. U klipu kratšího než preset trvá celý klip.
 - Šest bílých teček ve dvou řadách se objeví při najetí. Mají 30% opacity a slouží k přesouvání. Obrys ukazuje místo vložení a sousedé se animovaně rozestupují. Zrušení přesunu zachová pořadí.
-- Dlaždice tvoří jednu vodorovnou řadu zleva doprava. Dlaždice + je poslední položkou a účastní se stejného řazení; po kliknutí její místo převezme nová zvuková dlaždice a + pokračuje na další pozici. Posouvání je **vodorovné**, pomocí kolečka nebo spodního posuvníku.
+- Dlaždice se řadí zleva doprava. Dlaždice + je na konci a přidává další zvukovou dlaždici.
 - Dole: časová osa s přímým kliknutím, pauza/přehrát, stop, ±5 s. Esc zastaví zvuk. Vpravo je hlavní hlasitost a ztlumení.
 
 ## Sekce
 
 - Pravé tlačítko mimo sekci, také na okolním pozadí: **Přidat sekci**.
 - Pravé tlačítko na prázdnou část sekce: **Přejmenovat / Duplikovat / Odstranit sekci**. V prázdné části sekce je také prostor nahoře a mezi dlaždicemi.
+- Položka **Autosize / Scroll** přepíná rozložení dané sekce. **Autosize** podle prostoru zmenší čtvercové dlaždice a rozloží je do řad, aby se všechny vešly. **Scroll** drží jednu vodorovnou řadu, kterou posouváte kolečkem nebo spodním posuvníkem. Starší projekty začínají v režimu Scroll.
 - Název vlevo nahoře je šedý s 30% opacity. Úchyt nahoře uprostřed tvoří šest šedých teček s 30% opacity. Za něj lze sekci přesunout do volného prostoru; sekce nepřesáhne pracovní plochu a nepřekryje sousedy.
 - Rohy mění velikost. Na plné ploše se sousedé navzájem vytlačují přes společné hranice; při pohybu se okraje měkce deformují a po puštění pružně dosednou se zavlněním. Nikdy se nepřekrývají. Menší sekce zůstávají použitelné díky vodorovnému scrollu.
 - Duplikování kopíruje popisky, zvuky, barvy i všechna nastavení dlaždic do nezávislých modelů.

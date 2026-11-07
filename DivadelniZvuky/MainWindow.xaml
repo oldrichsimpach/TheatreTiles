@@ -1,5 +1,18 @@
-<Window x:Class="DivadelniZvuky.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="TheatreTiles · 0.2.1" Icon="Assets/TheatreTiles.ico" Width="1280" Height="850" MinWidth="720" MinHeight="560" Foreground="#F4F4F5" FontFamily="Segoe UI" AllowDrop="True">
+<Window x:Class="DivadelniZvuky.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="TheatreTiles · 0.2.3" Icon="Assets/TheatreTiles.ico" Width="1280" Height="850" MinWidth="720" MinHeight="560" Foreground="#F4F4F5" FontFamily="Segoe UI" AllowDrop="True">
 
+ <Window.Resources>
+  <Style x:Key="CueNoteToolTip" TargetType="ToolTip">
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="ToolTip">
+      <Border Background="#303034" CornerRadius="12" Padding="14,10">
+       <ContentPresenter/>
+      </Border>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
+  </Style>
+ </Window.Resources>
  <Grid Margin="24">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <DockPanel>

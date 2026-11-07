@@ -46,6 +46,7 @@ public partial class MainWindow
   Check(nextChildren.Count == 5 && Canvas.GetLeft(nextChildren[3]) < Canvas.GetLeft(nextChildren[4]), "Plus did not advance after the inserted tile");
   UndoLayout(); original = project.Sections[0];
   var cue = original.Cues[0]; var cueView = CreateTile(cue, sectionViews[original.Id], 220);
+  Check(cueView.ToolTip is ToolTip { Content: TextBlock { Text: "Poznámka…" } }, "Missing default hover note");
   var menu = cueView.ContextMenu!; var fade = menu.Items.OfType<MenuItem>().Single(i => i.Header as string == "Fade");
   Check(fade.Items.Count == 4, "Fade submenu presets missing");
   menu.PlacementTarget = sectionViews[original.Id]; menu.IsOpen = true; await Task.Delay(100); menu.ApplyTemplate(); fade.ApplyTemplate(); fade.IsSubmenuOpen = true; await Task.Delay(100); UpdateLayout();
@@ -58,10 +59,11 @@ public partial class MainWindow
    Check(Math.Abs(EffectiveVolume(1, 1, true, 10 - seconds / 2.0, 10, seconds) - .5) < .0001, "Fade midpoint failed");
    Check(EffectiveVolume(1, 1, true, 10, 10, seconds) == 0, "Fade end failed");
   }
+  cue.Note = "Spustit po zhasnutí.\nPočkat na pokyn.";
   dirty = false;
   AddSection(original); ValidatePartition(); Check(project.Sections[1].Y == .5 && project.Sections[1].Width == 1, "Two horizontal section halves failed");
   var duplicate = project.Sections[1];
-  Check(duplicate.Cues[0].Id != cue.Id && duplicate.Cues[0].Source == wave && duplicate.Cues[0].FadeSeconds == 7 && duplicate.Cues[0].Volume == .6, "Duplicate did not copy settings/audio independently");
+  Check(duplicate.Cues[0].Id != cue.Id && duplicate.Cues[0].Source == wave && duplicate.Cues[0].FadeSeconds == 7 && duplicate.Cues[0].Volume == .6 && duplicate.Cues[0].Note == cue.Note, "Duplicate did not copy settings/audio/notes independently");
   duplicate.Cues[0].Text = "Změněná kopie"; Check(cue.Text == "Déšť", "Duplicate shares cue model");
   AddSection(original); ValidatePartition(); Check(project.Sections[0].Height == .5 && project.Sections[2].X == .5 && project.Sections[2].Height == 1, "Three section layout failed");
   UpdateLayout(); SavePreview(Path.Combine(output, "preview-three.png"));
@@ -128,10 +130,30 @@ public partial class MainWindow
   RenderTiles(); UpdateLayout(); surface = sectionViews[original.Id];
   Check(surface.Scroll.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled && surface.Scroll.ScrollableWidth > 0, "Horizontal overflow missing");
   surface.Scroll.ScrollToRightEnd(); UpdateLayout(); Check(surface.Scroll.HorizontalOffset > 0 && surface.Scroll.VerticalOffset == 0, "Horizontal scroll failed");
+  void ToggleSizing(ShowSection section)
+  {
+   var item = SectionMenu(section).Items.OfType<MenuItem>().Single(i => i.Header is string text && text.StartsWith("Autosize / Scroll"));
+   item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+   UpdateLayout();
+  }
+  ToggleSizing(original);
+  tileCanvas = (Canvas)surface.Scroll.Content;
+  var fitted = tileCanvas.Children.OfType<FrameworkElement>().ToArray();
+  Check(original.AutoSizeTiles && project.Sections.Skip(1).All(s => !s.AutoSizeTiles), "Sizing toggle affected other sections");
+  Check(surface.Scroll.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled && surface.Scroll.ScrollableWidth == 0 && surface.Scroll.HorizontalOffset == 0, "Autosize still scrolls");
+  Check(fitted.Length == original.Cues.Count + 1 && fitted[^1] is Button, "Autosize omitted a tile or the add button");
+  Check(fitted.Select(Canvas.GetTop).Distinct().Count() > 1, "Autosize failed to use the available rows");
+  Check(fitted.All(tile => tile.Width > 0 && tile.Width == tile.Height &&
+   Canvas.GetLeft(tile) + tile.Width <= surface.Scroll.ViewportWidth + .01 &&
+   Canvas.GetTop(tile) + tile.Height <= surface.Scroll.ViewportHeight + .01), "Autosize clipped or stretched a tile");
+  Check(fitted[0].ToolTip is ToolTip { Content: TextBlock note } && note.Text == cue.Note, "Saved note missing from the hover card");
+  ToggleSizing(original);
+  Check(!original.AutoSizeTiles && surface.Scroll.ScrollableWidth > 0, "Returning to Scroll did not restore overflow");
+  ToggleSizing(original);
   projectPath = Path.Combine(output, "sections.divz"); project.LayoutLocked = true; SyncLayoutLock();
   Check(SaveProject(), "Save sections failed");
   File.Delete(wave); OpenProject(projectPath);
-  Check(project.Sections.Count == 4 && project.LayoutLocked && project.Sections[0].Name == "První dějství" && AllCues().First().FadeSeconds == 7 && File.Exists(AllCues().First().Source), "Sections/settings/audio round-trip failed");
+  Check(project.Sections.Count == 4 && project.LayoutLocked && project.Sections[0].Name == "První dějství" && project.Sections[0].AutoSizeTiles && AllCues().First().Note == cue.Note && AllCues().First().FadeSeconds == 7 && File.Exists(AllCues().First().Source), "Sections/settings/audio round-trip failed");
   project.LayoutLocked = false; SyncLayoutLock();
   // Migration of a pre-section project.
   var legacy = new ShowProject { Version = 1, Cues = [new Cue { Text = "Starý projekt", FadeOut = true }] };
@@ -144,6 +166,6 @@ public partial class MainWindow
   Check(actual.Right == bounds.Right && actual.Bottom == bounds.Bottom, "Fullscreen regressed"); ToggleFullscreen();
   await Task.Delay(400); RenderTiles(); UpdateLayout(); SavePreview(Path.Combine(output, "preview-final.png"));
   dirty = false;
-  File.WriteAllText(Path.Combine(output, "test-result.txt"), "PASS: single horizontal tile row and inline advancing plus; two top/bottom sections; shared spring membrane with geometric non-overlap; quarter-to-half topology reflow and undo; victim-only rebound after landing; section duplicate/settings/audio persistence; fade presets; locked layout; tile reorder/delete undo; horizontal scroll; WAV playback and fullscreen. Animation feel requires manual verification.");
+  File.WriteAllText(Path.Combine(output, "test-result.txt"), "PASS: horizontal scroll and inline plus; per-section Autosize with square tiles; hover notes and project persistence; section geometry, reflow, rebound, duplication and undo; fade presets; layout lock; WAV playback and fullscreen. Animation feel requires manual verification.");
  }
 }

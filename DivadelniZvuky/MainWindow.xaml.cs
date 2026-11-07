@@ -18,6 +18,7 @@ public sealed class Cue
 {
  public string Id { get; set; } = Guid.NewGuid().ToString("N");
  public string Text { get; set; } = "Nový zvuk";
+ public string? Note { get; set; }
  public bool Used { get; set; }
  public double Volume { get; set; } = 1;
  public bool FadeOut { get; set; }
@@ -102,7 +103,7 @@ public partial class MainWindow : Window
  {
   string name = projectPath is null ? "Nové představení" : Path.GetFileNameWithoutExtension(projectPath);
   ProjectLabel.Text = name + (dirty ? " •" : "");
-  Title = name + " · TheatreTiles 0.2.1";
+  Title = name + " · TheatreTiles 0.2.3";
  }
  void FullscreenClick(object sender, RoutedEventArgs e) => ToggleFullscreen();
  [DllImport("dwmapi.dll")]
@@ -243,16 +244,43 @@ public partial class MainWindow : Window
  {
   var border = new Border
   {
-   Width = size, Height = size, CornerRadius = new CornerRadius(20),
+   Width = size, Height = size, CornerRadius = new CornerRadius(surface.Model.AutoSizeTiles ? Math.Min(20, size / 5) : 20),
    Background = MeshBackground(true, cue.Used),
    Margin = new Thickness(0), BorderBrush = active == cue ? Color("#DDE7F2") : Brushes.Transparent,
-   BorderThickness = new Thickness(active == cue ? 2 : 0), AllowDrop = true, Cursor = Cursors.Hand,
-   ToolTip = "Kliknutí: přehrát od začátku · pravé tlačítko: nastavení"
+   BorderThickness = new Thickness(active == cue ? Math.Min(2, size / 10) : 0),
+   AllowDrop = true, Cursor = Cursors.Hand, ClipToBounds = true
   };
-  var grid = new Grid { Margin = new Thickness(18) }; border.Child = grid;
+  var note = new TextBlock
+  {
+   Text = CueNoteText(cue), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Left,
+   MaxWidth = 400, FontFamily = FontFamily, FontSize = 16, Foreground = Color("#F4F4F5")
+  };
+  var noteTip = new ToolTip
+  {
+   Content = note, Style = (Style)FindResource("CueNoteToolTip"),
+   PlacementTarget = border, Placement = PlacementMode.Custom,
+   CustomPopupPlacementCallback = static (size, _, _) =>
+   [
+    new(new Point(14, -size.Height - 10), PopupPrimaryAxis.Horizontal),
+    new(new Point(-size.Width - 14, -size.Height - 10), PopupPrimaryAxis.Horizontal),
+    new(new Point(14, 18), PopupPrimaryAxis.Horizontal),
+    new(new Point(-size.Width - 14, 18), PopupPrimaryAxis.Horizontal)
+   ]
+  };
+  border.ToolTip = noteTip;
+  border.ToolTipOpening += (_, _) =>
+   noteTip.PlacementRectangle = new Rect(Mouse.GetPosition(border), new Size(0, 0));
+  border.MouseMove += (_, e) =>
+  {
+   if (noteTip.IsOpen)
+    noteTip.PlacementRectangle = new Rect(e.GetPosition(border), new Size(0, 0));
+  };
+  ToolTipService.SetInitialShowDelay(border, 300);
+  ToolTipService.SetShowDuration(border, int.MaxValue);
+  var grid = new Grid { Margin = new Thickness(surface.Model.AutoSizeTiles ? Math.Min(18, size / 10) : 18) }; border.Child = grid;
   var label = new TextBlock
   {
-   Text = cue.Text, FontSize = Math.Clamp(size / 8.15, 14, 27), FontWeight = FontWeights.SemiBold, Foreground = Brushes.White,
+   Text = cue.Text, FontSize = Math.Clamp(size / 8.15, surface.Model.AutoSizeTiles ? 1 : 14, 27), FontWeight = FontWeights.SemiBold, Foreground = Brushes.White,
    TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis,
    HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Center, MaxHeight = 145,
    IsHitTestVisible = false
@@ -260,7 +288,9 @@ public partial class MainWindow : Window
   grid.Children.Add(label);
   var grip = MakeGrip(Brushes.White);
   grip.HorizontalAlignment = HorizontalAlignment.Center; grip.VerticalAlignment = VerticalAlignment.Top;
-  grip.Cursor = Cursors.SizeAll; grip.ToolTip = "Tažením změnit pořadí"; grip.Visibility = Visibility.Hidden;
+  double gripScale = Math.Min(1, size / 70);
+  grip.LayoutTransform = new ScaleTransform(gripScale, gripScale);
+  grip.Cursor = Cursors.SizeAll; grip.Visibility = Visibility.Hidden;
   Point origin = default;
   grip.MouseLeftButtonDown += (_, e) => { origin = e.GetPosition(grip); e.Handled = true; };
   grip.MouseMove += (_, e) =>
@@ -276,16 +306,17 @@ public partial class MainWindow : Window
   border.MouseEnter += (_, _) => grip.Visibility = project.LayoutLocked ? Visibility.Hidden : Visibility.Visible;
   border.MouseLeave += (_, _) => grip.Visibility = Visibility.Hidden;
   border.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (!surface.IsDragging) StartCue(cue); };
-  border.ContextMenu = CreateCueMenu(cue, label);
+  border.ContextMenu = CreateCueMenu(cue, label, note);
   return border;
  }
- ContextMenu CreateCueMenu(Cue cue, TextBlock label)
+ static string CueNoteText(Cue cue) => string.IsNullOrWhiteSpace(cue.Note) ? "Poznámka…" : cue.Note;
+ ContextMenu CreateCueMenu(Cue cue, TextBlock label, TextBlock note)
  {
   var menu = new ContextMenu { MinWidth = 280 };
   var upload = new MenuItem { Header = "Nahrát / změnit zvuk", Icon = new TextBlock { Text = "↑" } };
   upload.Click += (_, _) => Import(cue); menu.Items.Add(upload);
   var edit = new MenuItem { Header = "Upravit popisek", Icon = new TextBlock { Text = "✎" } };
-  edit.Click += (_, _) => EditCueText(cue, label); menu.Items.Add(edit);
+  edit.Click += (_, _) => EditCueText(cue, label, note: note); menu.Items.Add(edit);
   var reset = new MenuItem { Header = "Označit jako nepřehraný", Icon = new TextBlock { Text = "↻" } };
   reset.Click += (_, _) => { cue.Used = false; MarkDirty(); RenderTiles(); }; menu.Items.Add(reset);
   menu.Items.Add(new Separator());
@@ -314,18 +345,52 @@ public partial class MainWindow : Window
   remove.Click += (_, _) => DeleteCue(cue); menu.Items.Add(remove);
   return menu;
  }
- void EditCueText(Cue cue, TextBlock label, string title = "Upravit popisek")
+ void EditCueText(Cue cue, TextBlock label, string title = "Upravit popisek", TextBlock? note = null)
  {
-  var dialog = new Window { Owner = this, Title = title, Width = 420, Height = 270, WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize, Background = Color("#1A1B29"), Foreground = Brushes.White };
+  var dialog = new Window { Owner = this, Title = title, Width = 420, Height = note is null ? 270 : 410, FontFamily = FontFamily, WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize, Background = Color("#1A1B29"), Foreground = Brushes.White };
   dialog.SourceInitialized += (_, _) => ApplyDarkTitleBar(dialog);
   var panel = new DockPanel { Margin = new Thickness(22) };
   var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
   var cancel = new Button { Content = "Zrušit", IsCancel = true, Margin = new Thickness(0, 0, 10, 0) };
   var save = new Button { Content = "Uložit", IsDefault = false }; save.Click += (_, _) => dialog.DialogResult = true;
   buttons.Children.Add(cancel); buttons.Children.Add(save); DockPanel.SetDock(buttons, Dock.Bottom); panel.Children.Add(buttons);
-  var editor = new TextBox { Text = cue.Text, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, FontSize = 24, Foreground = Brushes.White, Background = Color("#242636"), BorderBrush = Color("#454759"), Padding = new Thickness(12), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-  panel.Children.Add(editor); dialog.Content = panel; dialog.Loaded += (_, _) => { editor.Focus(); editor.SelectAll(); };
-  if (dialog.ShowDialog() == true) { cue.Text = editor.Text; label.Text = cue.Text; if (active == cue) NowPlaying.Text = cue.Text; MarkDirty(); }
+  TextBox Editor(string text, double fontSize) => new()
+  {
+   Text = text, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, FontSize = fontSize,
+   Foreground = Brushes.White, Background = Color("#242636"), BorderBrush = Color("#454759"),
+   Padding = new Thickness(12), VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+  };
+  var editor = Editor(cue.Text, note is null ? 24 : 18);
+  TextBox? noteEditor = null;
+  if (note is null) panel.Children.Add(editor);
+  else
+  {
+   void AddCaption(string text, Thickness margin)
+   {
+    var caption = new TextBlock { Text = text, FontSize = 15, Margin = margin };
+    DockPanel.SetDock(caption, Dock.Top);
+    panel.Children.Add(caption);
+   }
+   AddCaption("Název dlaždice", new Thickness(0, 0, 0, 6));
+   editor.Height = 62;
+   DockPanel.SetDock(editor, Dock.Top);
+   panel.Children.Add(editor);
+   AddCaption("Poznámka", new Thickness(0, 14, 0, 6));
+   noteEditor = Editor(cue.Note ?? "", 16);
+   panel.Children.Add(noteEditor);
+  }
+  dialog.Content = panel;
+  dialog.Loaded += (_, _) => { editor.Focus(); editor.SelectAll(); };
+  if (dialog.ShowDialog() != true) return;
+  cue.Text = editor.Text;
+  label.Text = cue.Text;
+  if (note is not null && noteEditor is not null)
+  {
+   cue.Note = string.IsNullOrWhiteSpace(noteEditor.Text) ? null : noteEditor.Text;
+   note.Text = CueNoteText(cue);
+  }
+  if (active == cue) NowPlaying.Text = cue.Text;
+  MarkDirty();
  }
  internal static double EffectiveVolume(double master, double track, bool fade, double position, double duration, int fadeSeconds = 3)
  {
